@@ -40,51 +40,6 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {});
   }
 
-  void _showAddCategoryDialog(BuildContext buildContext) {
-    TextEditingController categoryController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text("Add New Category"),
-          content: TextField(
-            controller: categoryController,
-            decoration: const InputDecoration(hintText: "Enter category name"),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel"),
-            ),
-            TextButton(
-              onPressed: () {
-                String newCategory = categoryController.text.trim();
-                if (newCategory.isNotEmpty && !_categoryBox.values.contains(newCategory)) {
-                  _categoryBox.add(newCategory);
-                  setState(() {});
-                }
-                Navigator.pop(context);
-              },
-              child: const Text("Add"),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _deleteCategory(String category) {
-    if (category != 'Personal') {
-      var index = _categoryBox.values.toList().indexOf(category);
-      if (index != -1) {
-        _categoryBox.deleteAt(index);
-        setState(() {
-          if (_selectedCategory == category) _selectedCategory = 'Personal';
-        });
-      }
-    }
-  }
-
   void _showTaskNoteEditor(int index) {
   final task = _taskBox.getAt(index);
   if (task == null) return;
@@ -138,11 +93,41 @@ class _HomeScreenState extends State<HomeScreen> {
   );
 }
 
+  List<Task> _getFilteredTasks() {
+    List<Task> tasks = _taskBox.values.where((task) => task.category == _selectedCategory).toList();
+
+    List<Task> uncompletedTasks = tasks.where((task) => !task.isCompleted).toList();
+    List<Task> completedTasks = tasks.where((task) => task.isCompleted).toList();
+
+    return [...uncompletedTasks, ...completedTasks]; // Uncompleted first, completed last
+  }
+
+  void _reorderTasks(int oldIndex, int newIndex) {
+    List<Task> tasks = _getFilteredTasks();
+
+    // Ignore completed tasks, only reorder uncompleted ones
+    int uncompletedCount = tasks.where((task) => !task.isCompleted).length;
+    if (oldIndex >= uncompletedCount || newIndex >= uncompletedCount) return;
+
+    Task movedTask = tasks.removeAt(oldIndex);
+    tasks.insert(newIndex, movedTask);
+
+    // Save reordered tasks back to Hive
+    for (int i = 0; i < tasks.length; i++) {
+      _taskBox.putAt(i, tasks[i]);
+    }
+
+    setState(() {});
+  }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("To-Do List")),
+      appBar: AppBar(title: Center(child: Text(" $_selectedCategory", style: const TextStyle(
+        color: Colors.blue, fontWeight: FontWeight.bold,
+      ),
+      ),),),
       drawer: Drawer(
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.zero,
@@ -166,10 +151,42 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.add),
-              title: const Text('Add Bucket'),
-              onTap: () {
-                _showAddCategoryDialog(context);
-              },
+              title: const Text("Add Bucket"),
+              trailing: IconButton(
+                icon: const Icon(Icons.add_circle, color: Colors.blue),
+                onPressed: () {
+                  TextEditingController categoryController = TextEditingController();
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return AlertDialog(
+                        title: const Text("Add New Category"),
+                        content: TextField(
+                          controller: categoryController,
+                          decoration: const InputDecoration(hintText: "Enter category name"),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text("Cancel"),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              String newCategory = categoryController.text.trim();
+                              if (newCategory.isNotEmpty && !_categoryBox.values.contains(newCategory)) {
+                                _categoryBox.add(newCategory);
+                                setState(() {});
+                              }
+                              Navigator.pop(context);
+                            },
+                            child: const Text("Add"),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
             ),
             ValueListenableBuilder(
               valueListenable: _categoryBox.listenable(),
@@ -182,8 +199,25 @@ class _HomeScreenState extends State<HomeScreen> {
                           ? null
                           : IconButton(
                               icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _deleteCategory(category),
+                              onPressed: () {
+                                if (_selectedCategory == category) {
+                                  setState(() {
+                                    _selectedCategory = 'Personal';
+                                  });
+                                }
+                                int index = box.values.toList().indexOf(category);
+                                if (index != -1) {
+                                  box.deleteAt(index);
+                                  setState(() {});
+                                }
+                              },
                             ),
+                      onTap: () {
+                        setState(() {
+                          _selectedCategory = category;
+                        });
+                        Navigator.pop(context);
+                      },
                     );
                   }).toList(),
                 );
@@ -203,86 +237,89 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _taskController,
-                    decoration: const InputDecoration(labelText: "New Task"),
-                  ),
-                ),
-                ValueListenableBuilder(
-                  valueListenable: _categoryBox.listenable(),
-                  builder: (context, Box<String> box, _) {
-                    return DropdownButton<String>(
-                      value: _selectedCategory,
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _selectedCategory = newValue!;
-                        });
-                      },
-                      items: box.values.map((String category) {
-                        return DropdownMenuItem<String>(
-                          value: category,
-                          child: Text(category),
-                        );
-                      }).toList(),
-                    );
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: _addTask,
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ValueListenableBuilder(
-              valueListenable: _taskBox.listenable(),
-              builder: (context, Box<Task> box, _) {
-                return ListView.builder(
-                  itemCount: box.length,
-                  itemBuilder: (context, index) {
-                    final task = box.getAt(index);
-                    if (task == null) return SizedBox.shrink();
-                    return Card(
-                      child: ListTile(
-                        title: Text(
-                          task.title,
-                          style: TextStyle(
-                            decoration: task.isCompleted ? TextDecoration.lineThrough : null,
-                          ),
-                        ),
-                        subtitle: Text("Category: ${task.category}"),
-                        leading: Checkbox(
-                          value: task.isCompleted,
-                          onChanged: (_) => _toggleTaskCompletion(index),
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (task.note != null && task.note!.isNotEmpty)
-                              const Icon(Icons.note, color: Colors.blue), // Note icon
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _deleteTask(index),
-                            ),
-                          ],
-                        ),
-                        onTap: () => _showTaskNoteEditor(index),
+      body: ValueListenableBuilder(
+        valueListenable: _taskBox.listenable(),
+        builder: (context, Box<Task> box, _) {
+          final tasks = _getFilteredTasks();
+          final uncompletedTasks = tasks.where((task) => !task.isCompleted).toList();
+          final completedTasks = tasks.where((task) => task.isCompleted).toList();
+
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _taskController,
+                        decoration: const InputDecoration(labelText: "New Task"),
                       ),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-        ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add),
+                      onPressed: _addTask,
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: ReorderableListView.builder(
+                        onReorder: _reorderTasks,
+                        itemCount: uncompletedTasks.length,
+                        itemBuilder: (context, index) {
+                          final task = uncompletedTasks[index];
+
+                          return Card(
+                            key: ValueKey(task.title),
+                            child: ListTile(
+                              title: Text(task.title),
+                              leading: Checkbox(
+                                value: task.isCompleted,
+                                onChanged: (_) => _toggleTaskCompletion(_taskBox.values.toList().indexOf(task)),
+                              ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (task.note != null && task.note!.isNotEmpty)
+                                    const Icon(Icons.note, color: Colors.blue),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () => _deleteTask(_taskBox.values.toList().indexOf(task)),
+                                  ),
+                                ],
+                              ),
+                              onTap: () => _showTaskNoteEditor(_taskBox.values.toList().indexOf(task)),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const Divider(),
+                    const Text("Completed Tasks", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: completedTasks.length,
+                        itemBuilder: (context, index) {
+                          final task = completedTasks[index];
+
+                          return Card(
+                            child: ListTile(
+                              title: Text(task.title, style: const TextStyle(decoration: TextDecoration.lineThrough)),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
