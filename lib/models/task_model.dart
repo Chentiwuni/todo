@@ -14,7 +14,10 @@ class Task {
   String category;
 
   @HiveField(3)
-  String? note; 
+  String? note;
 
-  Task({required this.title, this.isCompleted = false, required this.category, this.note});
+  @HiveField(4)
+  DateTime? dueDate;
+
+  Task({required this.title, this.isCompleted = false, required this.category, this.note, this.dueDate});
 }

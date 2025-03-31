@@ -125,7 +125,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Center(child: Text(" $_selectedCategory", style: const TextStyle(
-        color: Colors.blue, fontWeight: FontWeight.bold,
+        color: Colors.green, fontWeight: FontWeight.bold,
       ),
       ),),),
       drawer: Drawer(
@@ -299,7 +299,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     const Divider(),
-                    const Text("Completed Tasks", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    const Text("Completed Tasks", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red)),
                     Expanded(
                       child: ListView.builder(
                         itemCount: completedTasks.length,
