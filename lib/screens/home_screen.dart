@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:intl/intl.dart';
 import '../models/task_model.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -11,17 +12,21 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
    final TextEditingController _taskController = TextEditingController();
-
   final Box<Task> _taskBox = Hive.box<Task>('tasks');
   final Box<String> _categoryBox = Hive.box<String>('categories');
-
   String _selectedCategory = 'Personal';
-  
+  DateTime? _selectedDueDate;
+
   void _addTask() {
     if (_taskController.text.isNotEmpty) {
-      final task = Task(title: _taskController.text, category: _selectedCategory);
+      final task = Task(
+        title: _taskController.text, 
+        category: _selectedCategory, 
+        dueDate: _selectedDueDate,
+      );
       _taskBox.add(task);
       _taskController.clear();
+      _selectedDueDate = null;
       setState(() {});
     }
   }
@@ -40,58 +45,90 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {});
   }
 
-  void _showTaskNoteEditor(int index) {
-  final task = _taskBox.getAt(index);
-  if (task == null) return;
+    Future<void> _pickDueDate(BuildContext context, Function(DateTime) onDatePicked) async {
+    DateTime now = DateTime.now();
+    DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: now,
+      lastDate: DateTime(now.year + 5),
+    );
 
-  TextEditingController noteController = TextEditingController(text: task.note);
+    if (pickedDate != null) {
+      onDatePicked(pickedDate);
+    }
+  }
 
-  showModalBottomSheet(
-    context: context,
-    builder: (context) {
-      return Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text("Edit Note for '${task.title}'", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
-            TextField(
-              controller: noteController,
-              decoration: const InputDecoration(labelText: "Task Note"),
-              maxLines: 3,
-            ),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton(
-                  onPressed: () {
-                    task.note = noteController.text;
-                    _taskBox.putAt(index, task);
-                    Navigator.pop(context);
-                    setState(() {});
-                  },
-                  child: const Text("Save"),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                  onPressed: () {
-                    task.note = null;
-                    _taskBox.putAt(index, task);
-                    Navigator.pop(context);
-                    setState(() {});
-                  },
-                  child: const Text("Delete Note", style: TextStyle(color: Colors.white)),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-    },
-  );
-}
+  void _showTaskEditor(int index) {
+    final task = _taskBox.getAt(index);
+    if (task == null) return;
+
+    TextEditingController noteController = TextEditingController(text: task.note);
+    DateTime? selectedDate = task.dueDate;
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("Edit Task - '${task.title}'", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
+              TextField(
+                controller: noteController,
+                decoration: const InputDecoration(labelText: "Task Note"),
+                maxLines: 3,
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text("Due Date: ${selectedDate != null ? DateFormat('yyyy-MM-dd').format(selectedDate!) : 'None'}"),
+                  IconButton(
+                    icon: const Icon(Icons.calendar_today),
+                    onPressed: () => _pickDueDate(context, (date) {
+                      setState(() {
+                        selectedDate = date;
+                      });
+                    }),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      task.note = noteController.text.trim().isEmpty ? null : noteController.text;
+                      task.dueDate = selectedDate;
+                      _taskBox.putAt(index, task);
+                      Navigator.pop(context);
+                      setState(() {});
+                    },
+                    child: const Text("Save"),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                    onPressed: () {
+                      task.note = null;
+                      task.dueDate = null;
+                      _taskBox.putAt(index, task);
+                      Navigator.pop(context);
+                      setState(() {});
+                    },
+                    child: const Text("Delete Note", style: TextStyle(color: Colors.white)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   List<Task> _getFilteredTasks() {
     List<Task> tasks = _taskBox.values.where((task) => task.category == _selectedCategory).toList();
@@ -99,27 +136,32 @@ class _HomeScreenState extends State<HomeScreen> {
     List<Task> uncompletedTasks = tasks.where((task) => !task.isCompleted).toList();
     List<Task> completedTasks = tasks.where((task) => task.isCompleted).toList();
 
-    return [...uncompletedTasks, ...completedTasks]; // Uncompleted first, completed last
+    // Sort uncompleted tasks by due date (earliest first)
+    uncompletedTasks.sort((a, b) {
+      if (a.dueDate == null && b.dueDate != null) return 1;
+      if (a.dueDate != null && b.dueDate == null) return -1;
+      if (a.dueDate != null && b.dueDate != null) return a.dueDate!.compareTo(b.dueDate!);
+      return 0;
+    });
+
+    return [...uncompletedTasks, ...completedTasks];
   }
 
   void _reorderTasks(int oldIndex, int newIndex) {
     List<Task> tasks = _getFilteredTasks();
-
-    // Ignore completed tasks, only reorder uncompleted ones
     int uncompletedCount = tasks.where((task) => !task.isCompleted).length;
+
     if (oldIndex >= uncompletedCount || newIndex >= uncompletedCount) return;
 
     Task movedTask = tasks.removeAt(oldIndex);
     tasks.insert(newIndex, movedTask);
 
-    // Save reordered tasks back to Hive
     for (int i = 0; i < tasks.length; i++) {
       _taskBox.putAt(i, tasks[i]);
     }
 
     setState(() {});
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -272,11 +314,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         itemCount: uncompletedTasks.length,
                         itemBuilder: (context, index) {
                           final task = uncompletedTasks[index];
+                          bool isOverdue = task.dueDate != null && task.dueDate!.isBefore(DateTime.now());
 
                           return Card(
                             key: ValueKey(task.title),
+                            color: isOverdue ? Colors.red.shade100 : null,
                             child: ListTile(
                               title: Text(task.title),
+                              subtitle: Text("Due: ${task.dueDate != null ? DateFormat('yyyy-MM-dd').format(task.dueDate!) : 'No due date'}"),
                               leading: Checkbox(
                                 value: task.isCompleted,
                                 onChanged: (_) => _toggleTaskCompletion(_taskBox.values.toList().indexOf(task)),
@@ -292,7 +337,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                 ],
                               ),
-                              onTap: () => _showTaskNoteEditor(_taskBox.values.toList().indexOf(task)),
+                              onTap: () => _showTaskEditor(_taskBox.values.toList().indexOf(task)),
                             ),
                           );
                         },
@@ -300,20 +345,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const Divider(),
                     const Text("Completed Tasks", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red)),
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: completedTasks.length,
-                        itemBuilder: (context, index) {
-                          final task = completedTasks[index];
-
-                          return Card(
-                            child: ListTile(
-                              title: Text(task.title, style: const TextStyle(decoration: TextDecoration.lineThrough)),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
+                    Expanded(child: ListView(children: completedTasks.map((task) => ListTile(title: Text(task.title, style: const TextStyle(decoration: TextDecoration.lineThrough)))).toList())),
                   ],
                 ),
               ),
