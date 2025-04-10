@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import '../models/task_model.dart';
+import 'package:uuid/uuid.dart';
+import '../services/firestore_service.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,39 +14,49 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+final FirestoreService _firestoreService = FirestoreService();
+final uuid = Uuid();
+
    final TextEditingController _taskController = TextEditingController();
   final Box<Task> _taskBox = Hive.box<Task>('tasks');
   final Box<String> _categoryBox = Hive.box<String>('categories');
   String _selectedCategory = 'Personal';
   DateTime? _selectedDueDate;
 
-  void _addTask() {
-    if (_taskController.text.isNotEmpty) {
-      final task = Task(
-        title: _taskController.text, 
-        category: _selectedCategory, 
-        dueDate: _selectedDueDate,
-      );
-      _taskBox.add(task);
-      _taskController.clear();
-      _selectedDueDate = null;
-      setState(() {});
-    }
-  }
-
-  void _toggleTaskCompletion(int index) {
-    final task = _taskBox.getAt(index);
-    if (task != null) {
-      task.isCompleted = !task.isCompleted;
-      _taskBox.putAt(index, task);
-      setState(() {});
-    }
-  }
-
-  void _deleteTask(int index) {
-    _taskBox.deleteAt(index);
+void _addTask() {
+  if (_taskController.text.isNotEmpty) {
+    final task = Task(
+      id: uuid.v4(),
+      title: _taskController.text,
+      category: _selectedCategory,
+      dueDate: _selectedDueDate,
+    );
+    _taskBox.add(task);
+    _firestoreService.addTask(task); // 🔄 sync to Firestore
+    _taskController.clear();
+    _selectedDueDate = null;
     setState(() {});
   }
+}
+
+void _toggleTaskCompletion(int index) {
+  final task = _taskBox.getAt(index);
+  if (task != null) {
+    task.isCompleted = !task.isCompleted;
+    _taskBox.putAt(index, task);
+    _firestoreService.updateTask(task);
+    setState(() {});
+  }
+}
+
+void _deleteTask(int index) {
+  final task = _taskBox.getAt(index);
+  if (task != null) {
+    _firestoreService.deleteTask(task.id);
+  }
+  _taskBox.deleteAt(index);
+  setState(() {});
+}
 
     Future<void> _pickDueDate(BuildContext context, Function(DateTime) onDatePicked) async {
     DateTime now = DateTime.now();
@@ -105,6 +118,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       task.note = noteController.text.trim().isEmpty ? null : noteController.text;
                       task.dueDate = selectedDate;
                       _taskBox.putAt(index, task);
+                      _firestoreService.updateTask(task);
                       Navigator.pop(context);
                       setState(() {});
                     },
@@ -309,36 +323,42 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   children: [
                     Expanded(
-                      child: ReorderableListView.builder(
-                        onReorder: _reorderTasks,
-                        itemCount: uncompletedTasks.length,
-                        itemBuilder: (context, index) {
-                          final task = uncompletedTasks[index];
-                          bool isOverdue = task.dueDate != null && task.dueDate!.isBefore(DateTime.now());
+                      child: Builder(
+                        builder: (context) {
+                          final usedIds = <String>{}; // ✅ Declare locally before list building
 
-                          return Card(
-                            key: ValueKey(task.title),
-                            color: isOverdue ? Colors.red.shade100 : null,
-                            child: ListTile(
-                              title: Text(task.title),
-                              subtitle: Text("Due: ${task.dueDate != null ? DateFormat('yyyy-MM-dd').format(task.dueDate!) : 'No due date'}"),
-                              leading: Checkbox(
-                                value: task.isCompleted,
-                                onChanged: (_) => _toggleTaskCompletion(_taskBox.values.toList().indexOf(task)),
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (task.note != null && task.note!.isNotEmpty)
-                                    const Icon(Icons.note, color: Colors.blue),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () => _deleteTask(_taskBox.values.toList().indexOf(task)),
+                          return ReorderableListView.builder(
+                            onReorder: _reorderTasks,
+                            itemCount: uncompletedTasks.length,
+                            itemBuilder: (context, index) {
+                              final task = uncompletedTasks[index];
+                              bool isOverdue = task.dueDate != null && task.dueDate!.isBefore(DateTime.now());
+
+                              return Card(
+                                key: usedIds.add(task.id) ? ValueKey(task.id) : UniqueKey(), // ✅ Unique key
+                                color: isOverdue ? Colors.red.shade100 : null,
+                                child: ListTile(
+                                  title: Text(task.title),
+                                  subtitle: Text("Due: ${task.dueDate != null ? DateFormat('yyyy-MM-dd').format(task.dueDate!) : 'No due date'}"),
+                                  leading: Checkbox(
+                                    value: task.isCompleted,
+                                    onChanged: (_) => _toggleTaskCompletion(_taskBox.values.toList().indexOf(task)),
                                   ),
-                                ],
-                              ),
-                              onTap: () => _showTaskEditor(_taskBox.values.toList().indexOf(task)),
-                            ),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (task.note != null && task.note!.isNotEmpty)
+                                        const Icon(Icons.note, color: Colors.blue),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete, color: Colors.red),
+                                        onPressed: () => _deleteTask(_taskBox.values.toList().indexOf(task)),
+                                      ),
+                                    ],
+                                  ),
+                                  onTap: () => _showTaskEditor(_taskBox.values.toList().indexOf(task)),
+                                ),
+                              );
+                            },
                           );
                         },
                       ),

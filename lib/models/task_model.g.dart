@@ -21,7 +21,7 @@ class TaskAdapter extends TypeAdapter<Task> {
       isCompleted: fields[1] as bool,
       category: fields[2] as String,
       note: fields[3] as String?,
-      dueDate: fields[4] as DateTime?,
+      dueDate: fields[4] as DateTime?, id: '',
     );
   }
 
