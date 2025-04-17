@@ -19,6 +19,20 @@ class FirestoreService {
             snapshot.docs.map((doc) => Task.fromMap(doc.data(), doc.id)).toList());
   }
 
+  Future<void> ensureDefaultCategory() async {
+  final docRef = _db
+      .collection('users')
+      .doc(_uid)
+      .collection('categories')
+      .doc('Personal');
+
+  final doc = await docRef.get();
+  if (!doc.exists) {
+    await docRef.set({});
+  }
+}
+
+
   Future<void> addTask(Task task) {
     return _db
         .collection('users')

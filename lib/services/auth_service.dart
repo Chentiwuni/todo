@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import '../services/firestore_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -7,11 +8,13 @@ class AuthService {
 
   Future<User?> signIn(String email, String password) async {
     final userCredential = await _auth.signInWithEmailAndPassword(email: email, password: password);
+    await FirestoreService().ensureDefaultCategory(); // Ensures 'Personal' exists
     return userCredential.user;
   }
 
   Future<User?> register(String email, String password) async {
     final userCredential = await _auth.createUserWithEmailAndPassword(email: email, password: password);
+    await FirestoreService().ensureDefaultCategory();
     return userCredential.user;
   }
 
