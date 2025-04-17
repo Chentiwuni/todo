@@ -2,7 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/task_model.dart';
+<<<<<<< HEAD
 import '../services/firestore_service.dart';
+=======
+import 'package:uuid/uuid.dart';
+import '../services/firestore_service.dart';
+
+>>>>>>> f03a1efa4bc8471927278780ec3e10633d272424
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,9 +18,10 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+<<<<<<< HEAD
   final _taskController = TextEditingController();
   final FirestoreService _firestoreService = FirestoreService();
-  String _selectedCategory = 'Personal';
+  final String _selectedCategory = 'Personal';
   DateTime? _selectedDueDate;
 
   void _addTask() async {
@@ -37,10 +44,54 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _deleteTask(Task task) {
-    _firestoreService.deleteTask(task.id);
-  }
+    firestoreService.deleteTask(task.id);
+=======
+final FirestoreService firestoreService = FirestoreService();
+final uuid = Uuid();
 
-  void _editTask(Task task) {
+   final TextEditingController taskController = TextEditingController();
+  final Box<Task> taskBox = Hive.box<Task>('tasks');
+  final Box<String> categoryBox = Hive.box<String>('categories');
+  String selectedCategory = 'Personal';
+  DateTime? selectedDueDate;
+
+void addTask() {
+  if (taskController.text.isNotEmpty) {
+    final task = Task(
+      id: uuid.v4(),
+      title: taskController.text,
+      category: selectedCategory,
+      dueDate: selectedDueDate,
+    );
+    taskBox.add(task);
+    firestoreService.addTask(task); // 🔄 sync to Firestore
+    taskController.clear();
+    selectedDueDate = null;
+    setState(() {});
+>>>>>>> f03a1efa4bc8471927278780ec3e10633d272424
+  }
+}
+
+void toggleTaskCompletion(int index) {
+  final task = taskBox.getAt(index);
+  if (task != null) {
+    task.isCompleted = !task.isCompleted;
+    taskBox.putAt(index, task);
+    firestoreService.updateTask(task);
+    setState(() {});
+  }
+}
+
+void deleteTask(int index) {
+  final task = taskBox.getAt(index);
+  if (task != null) {
+    firestoreService.deleteTask(task.id);
+  }
+  taskBox.deleteAt(index);
+  setState(() {});
+}
+
+  void editTask(Task task) {
     final noteController = TextEditingController(text: task.note);
     DateTime? selectedDate = task.dueDate;
 
@@ -81,7 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onPressed: () {
                     task.note = noteController.text;
                     task.dueDate = selectedDate;
-                    _firestoreService.updateTask(task);
+                    firestoreService.updateTask(task);
                     Navigator.pop(context);
                   },
                   child: const Text("Save"),
@@ -92,7 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onPressed: () {
                     task.note = null;
                     task.dueDate = null;
-                    _firestoreService.updateTask(task);
+                    firestoreService.updateTask(task);
                     Navigator.pop(context);
                   },
                   child: const Text("Clear Note", style: TextStyle(color: Colors.white)),
@@ -105,9 +156,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildTaskList(String category) {
+  Widget buildTaskList(String category) {
     return StreamBuilder<List<Task>>(
-      stream: _firestoreService.getTasks(category),
+      stream: firestoreService.getTasks(category),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
 
@@ -123,16 +174,46 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: ListTile(
                   title: Text(task.title),
                   subtitle: Text("Due: ${task.dueDate != null ? DateFormat('yyyy-MM-dd').format(task.dueDate!) : 'None'}"),
-                  leading: Checkbox(value: task.isCompleted, onChanged: (_) => _toggleTaskCompletion(task)),
-                  trailing: IconButton(icon: const Icon(Icons.delete), onPressed: () => _deleteTask(task)),
-                  onTap: () => _editTask(task),
+                  leading: Checkbox(value: task.isCompleted, onChanged: (_) => toggleTaskCompletion(task)),
+                  trailing: IconButton(icon: const Icon(Icons.delete), onPressed: () => deleteTask(task)),
+                  onTap: () => editTask(task),
                 ),
               ),
+<<<<<<< HEAD
             const Divider(),
             const Text("Completed Tasks", style: TextStyle(fontWeight: FontWeight.bold)),
             for (var task in completed)
               ListTile(
                 title: Text(task.title, style: const TextStyle(decoration: TextDecoration.lineThrough)),
+=======
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      task.note = noteController.text.trim().isEmpty ? null : noteController.text;
+                      task.dueDate = selectedDate;
+                      _taskBox.putAt(index, task);
+                      _firestoreService.updateTask(task);
+                      Navigator.pop(context);
+                      setState(() {});
+                    },
+                    child: const Text("Save"),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                    onPressed: () {
+                      task.note = null;
+                      task.dueDate = null;
+                      _taskBox.putAt(index, task);
+                      Navigator.pop(context);
+                      setState(() {});
+                    },
+                    child: const Text("Delete Note", style: TextStyle(color: Colors.white)),
+                  ),
+                ],
+>>>>>>> f03a1efa4bc8471927278780ec3e10633d272424
               ),
           ],
         );
@@ -140,10 +221,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildCategoryDrawer() {
+  Widget buildCategoryDrawer() {
     return Drawer(
       child: StreamBuilder<List<String>>(
-        stream: _firestoreService.getCategories(),
+        stream: firestoreService.getCategories(),
         builder: (context, snapshot) {
           final categories = snapshot.data ?? ['Personal'];
           return ListView(
@@ -173,7 +254,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         TextButton(
                           onPressed: () {
                             if (controller.text.trim().isNotEmpty) {
-                              _firestoreService.addCategory(controller.text.trim());
+                              firestoreService.addCategory(controller.text.trim());
                               Navigator.pop(context);
                             }
                           },
@@ -187,22 +268,76 @@ class _HomeScreenState extends State<HomeScreen> {
               for (var cat in categories)
                 ListTile(
                   title: Text(cat),
-                  selected: _selectedCategory == cat,
+                  selected: selectedCategory == cat,
                   trailing: cat == 'Personal'
                       ? null
                       : IconButton(
                           icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => _firestoreService.deleteCategory(cat),
+                          onPressed: () => firestoreService.deleteCategory(cat),
                         ),
                   onTap: () {
                     setState(() {
-                      _selectedCategory = cat;
+                      selectedCategory = cat;
                     });
                     Navigator.pop(context);
                   },
                 ),
+<<<<<<< HEAD
+=======
+              ),
+              Expanded(
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: Builder(
+                        builder: (context) {
+                          final usedIds = <String>{}; // ✅ Declare locally before list building
+
+                          return ReorderableListView.builder(
+                            onReorder: _reorderTasks,
+                            itemCount: uncompletedTasks.length,
+                            itemBuilder: (context, index) {
+                              final task = uncompletedTasks[index];
+                              bool isOverdue = task.dueDate != null && task.dueDate!.isBefore(DateTime.now());
+
+                              return Card(
+                                key: usedIds.add(task.id) ? ValueKey(task.id) : UniqueKey(), // ✅ Unique key
+                                color: isOverdue ? Colors.red.shade100 : null,
+                                child: ListTile(
+                                  title: Text(task.title),
+                                  subtitle: Text("Due: ${task.dueDate != null ? DateFormat('yyyy-MM-dd').format(task.dueDate!) : 'No due date'}"),
+                                  leading: Checkbox(
+                                    value: task.isCompleted,
+                                    onChanged: (_) => toggleTaskCompletion(taskBox.values.toList().indexOf(task)),
+                                  ),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (task.note != null && task.note!.isNotEmpty)
+                                        const Icon(Icons.note, color: Colors.blue),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete, color: Colors.red),
+                                        onPressed: () => deleteTask(taskBox.values.toList().indexOf(task)),
+                                      ),
+                                    ],
+                                  ),
+                                  onTap: () => _showTaskEditor(taskBox.values.toList().indexOf(task)),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                    const Divider(),
+                    const Text("Completed Tasks", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red)),
+                    Expanded(child: ListView(children: completedTasks.map((task) => ListTile(title: Text(task.title, style: const TextStyle(decoration: TextDecoration.lineThrough)))).toList())),
+                  ],
+                ),
+              ),
+>>>>>>> f03a1efa4bc8471927278780ec3e10633d272424
             ],
-          );
+          )
         },
       ),
     );
@@ -212,7 +347,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_selectedCategory),
+        title: Text(selectedCategory),
         centerTitle: true,
         actions: [
           IconButton(
@@ -221,7 +356,7 @@ class _HomeScreenState extends State<HomeScreen> {
           )
         ],
       ),
-      drawer: _buildCategoryDrawer(),
+      drawer: buildCategoryDrawer(),
       body: Column(
         children: [
           Padding(
@@ -230,15 +365,15 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Expanded(
                   child: TextField(
-                    controller: _taskController,
+                    controller: taskController,
                     decoration: const InputDecoration(labelText: "New Task"),
                   ),
                 ),
-                IconButton(icon: const Icon(Icons.add), onPressed: _addTask),
+                IconButton(icon: const Icon(Icons.add), onPressed: addTask),
               ],
             ),
           ),
-          Expanded(child: _buildTaskList(_selectedCategory)),
+          Expanded(child: buildTaskList(selectedCategory)),
         ],
       ),
     );
