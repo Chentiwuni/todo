@@ -145,7 +145,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   title: Text(task.title),
                   subtitle: Text("Due: ${task.dueDate != null ? DateFormat('yyyy-MM-dd').format(task.dueDate!) : 'None'}"),
                   leading: Checkbox(value: task.isCompleted, onChanged: (_) => _toggleTaskCompletion(task)),
-                  trailing: IconButton(icon: const Icon(Icons.delete), onPressed: () => _deleteTask(task)),
+                 trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (task.note != null && task.note!.trim().isNotEmpty)
+                      const Icon(Icons.note, color: Colors.blue),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.redAccent,),
+                      onPressed: () => _deleteTask(task),
+                    ),
+                  ],
+                ),
                   onTap: () => _editTask(task),
                 ),
               ),
