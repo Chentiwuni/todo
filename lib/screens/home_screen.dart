@@ -243,7 +243,15 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_selectedCategory),
+        title: Text(
+          _selectedCategory,
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.orangeAccent, // Nice highlight color
+            letterSpacing: 1.2,
+          ),
+        ),
         centerTitle: true,
         actions: [
           IconButton(
