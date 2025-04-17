@@ -1,23 +1,42 @@
-import 'package:hive/hive.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-part 'task_model.g.dart';
 
-@HiveType(typeId: 0)
+
 class Task {
-  @HiveField(0)
+  String id;
   String title;
-
-  @HiveField(1)
   bool isCompleted;
-
-  @HiveField(2)
   String category;
-
-  @HiveField(3)
   String? note;
-
-  @HiveField(4)
   DateTime? dueDate;
 
-  Task({required this.title, this.isCompleted = false, required this.category, this.note, this.dueDate});
+  Task({
+    required this.id,
+    required this.title,
+    this.isCompleted = false,
+    required this.category,
+    this.note,
+    this.dueDate,
+  });
+
+  factory Task.fromMap(Map<String, dynamic> map, String documentId) {
+    return Task(
+      id: documentId,
+      title: map['title'] ?? '',
+      isCompleted: map['isCompleted'] ?? false,
+      category: map['category'] ?? 'Personal',
+      note: map['note'],
+      dueDate: map['dueDate'] != null ? (map['dueDate'] as Timestamp).toDate() : null,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'title': title,
+      'isCompleted': isCompleted,
+      'category': category,
+      'note': note,
+      'dueDate': dueDate,
+    };
+  }
 }
