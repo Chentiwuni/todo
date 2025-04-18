@@ -13,12 +13,21 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   final _authService = AuthService();
   String? _error;
 
   void _register() async {
+    if (_passwordController.text != _confirmPasswordController.text) {
+      setState(() => _error = "Passwords do not match.");
+      return;
+    }
+
     try {
-      await _authService.register(_emailController.text, _passwordController.text);
+      await _authService.register(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
     } on FirebaseAuthException catch (e) {
       setState(() => _error = e.message);
@@ -33,11 +42,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            if (_error != null) Text(_error!, style: const TextStyle(color: Colors.red)),
-            TextField(controller: _emailController, decoration: const InputDecoration(labelText: "Email")),
-            TextField(controller: _passwordController, decoration: const InputDecoration(labelText: "Password"), obscureText: true),
+            if (_error != null)
+              Text(_error!, style: const TextStyle(color: Colors.red)),
+            TextField(
+              controller: _emailController,
+              decoration: const InputDecoration(labelText: "Email"),
+            ),
+            TextField(
+              controller: _passwordController,
+              decoration: const InputDecoration(labelText: "Password"),
+              obscureText: true,
+            ),
+            TextField(
+              controller: _confirmPasswordController,
+              decoration: const InputDecoration(labelText: "Confirm Password"),
+              obscureText: true,
+            ),
             const SizedBox(height: 16),
-            ElevatedButton(onPressed: _register, child: const Text("Register")),
+            ElevatedButton(
+              onPressed: _register,
+              child: const Text("Register"),
+            ),
           ],
         ),
       ),

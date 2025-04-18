@@ -234,9 +234,20 @@ void _confirmDeleteCategory(String categoryName) {
                 decoration: const BoxDecoration(color: Colors.blue),
                 child: Row(
                   children: [
-                    const CircleAvatar(backgroundColor: Colors.white, radius: 30, child: Icon(Icons.person)),
+                    const CircleAvatar(
+                      backgroundColor: Colors.white,
+                      radius: 30,
+                      child: Icon(Icons.person),
+                    ),
                     const SizedBox(width: 10),
-                    Text(FirebaseAuth.instance.currentUser!.email ?? '', style: const TextStyle(color: Colors.white)),
+                    Expanded(
+                      child: Text(
+                        FirebaseAuth.instance.currentUser!.email ?? '',
+                        style: const TextStyle(color: Colors.white),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
               ),
