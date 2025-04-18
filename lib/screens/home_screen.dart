@@ -60,6 +60,35 @@ class _HomeScreenState extends State<HomeScreen> {
   );
 }
 
+void _confirmDeleteCategory(String categoryName) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Delete Category'),
+      content: Text(
+        "Deleting '$categoryName' will remove all tasks under it. Are you sure?",
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          onPressed: () {
+            _firestoreService.deleteCategory(categoryName);
+            if (_selectedCategory == categoryName) {
+              setState(() => _selectedCategory = 'Personal');
+            }
+            Navigator.pop(context);
+          },
+          child: const Text('Delete'),
+        ),
+      ],
+    ),
+  );
+}
+
 
   void _editTask(Task task) {
     final titleController = TextEditingController(text: task.title);
@@ -129,6 +158,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: const Text("Cancel"),
                   ),
                   ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
                     onPressed: () {
                       task.title = titleController.text.trim();
                       task.note = noteController.text.trim().isEmpty ? null : noteController.text.trim();
@@ -136,7 +166,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       _firestoreService.updateTask(task);
                       Navigator.pop(context);
                     },
-                    child: const Text("Save Changes"),
+                    child: const Text("Save Changes", style: TextStyle(color: Colors.white)),
                   ),
                 ],
               ),
@@ -244,7 +274,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ? null
                       : IconButton(
                           icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => _firestoreService.deleteCategory(cat),
+                          onPressed: () => _confirmDeleteCategory(cat),
                         ),
                   onTap: () {
                     setState(() {
