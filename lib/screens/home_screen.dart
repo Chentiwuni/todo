@@ -242,9 +242,9 @@ void _confirmDeleteCategory(String categoryName) {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        FirebaseAuth.instance.currentUser!.email ?? '',
+                        (FirebaseAuth.instance.currentUser!.email ?? '').split('@')[0],
                         style: const TextStyle(color: Colors.white),
-                        maxLines: 2,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
