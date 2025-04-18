@@ -36,9 +36,30 @@ class _HomeScreenState extends State<HomeScreen> {
     _firestoreService.updateTask(task);
   }
 
-  void _deleteTask(Task task) {
-    _firestoreService.deleteTask(task.id);
-  }
+  void _confirmDeleteTask(Task task) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Delete Task'),
+      content: Text("Are you sure you want to delete '${task.title}'?"),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          onPressed: () {
+            _firestoreService.deleteTask(task.id);
+            Navigator.pop(context);
+          },
+          child: const Text('Delete'),
+        ),
+      ],
+    ),
+  );
+}
+
 
   void _editTask(Task task) {
     final titleController = TextEditingController(text: task.title);
@@ -152,7 +173,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const Icon(Icons.note, color: Colors.blue),
                     IconButton(
                       icon: const Icon(Icons.delete, color: Colors.redAccent,),
-                      onPressed: () => _deleteTask(task),
+                      onPressed: () => _confirmDeleteTask(task),
                     ),
                   ],
                 ),
