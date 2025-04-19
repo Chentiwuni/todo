@@ -171,7 +171,7 @@ void _confirmDeleteCategory(String categoryName) {
                     child: const Text("Cancel"),
                   ),
                   ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2E7D32)),
                     onPressed: () {
                       task.title = titleController.text.trim();
                       task.note = noteController.text.trim().isEmpty ? null : noteController.text.trim();
