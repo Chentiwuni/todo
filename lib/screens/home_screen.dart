@@ -31,6 +31,19 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _reorderTasks(List<Task> tasks, int oldIndex, int newIndex) async {
+  if (newIndex > oldIndex) newIndex -= 1;
+
+  final movedTask = tasks.removeAt(oldIndex);
+  tasks.insert(newIndex, movedTask);
+
+  for (int i = 0; i < tasks.length; i++) {
+    tasks[i].position = i;
+    await _firestoreService.updateTask(tasks[i]);
+  }
+}
+
+
   void _toggleTaskCompletion(Task task) {
     task.isCompleted = !task.isCompleted;
     _firestoreService.updateTask(task);
@@ -177,50 +190,69 @@ void _confirmDeleteCategory(String categoryName) {
     );
   }
 
-  Widget _buildTaskList(String category) {
-    return StreamBuilder<List<Task>>(
-      stream: _firestoreService.getTasks(category),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+Widget _buildTaskList(String category) {
+  return StreamBuilder<List<Task>>(
+    stream: _firestoreService.getTasks(category),
+    builder: (context, snapshot) {
+      if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
 
-        final tasks = snapshot.data!;
-        final uncompleted = tasks.where((t) => !t.isCompleted).toList()
-          ..sort((a, b) => (a.dueDate ?? DateTime.now()).compareTo(b.dueDate ?? DateTime.now()));
-        final completed = tasks.where((t) => t.isCompleted).toList();
+      final tasks = snapshot.data!;
+      final uncompleted = tasks.where((t) => !t.isCompleted).toList();
+      final completed = tasks.where((t) => t.isCompleted).toList();
 
-        return ListView(
-          children: [
-            for (var task in uncompleted)
-              Card(
-                child: ListTile(
-                  title: Text(task.title),
-                  subtitle: Text("Due: ${task.dueDate != null ? DateFormat('yyyy-MM-dd').format(task.dueDate!) : 'None'}"),
-                  leading: Checkbox(value: task.isCompleted, onChanged: (_) => _toggleTaskCompletion(task)),
-                 trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (task.note != null && task.note!.trim().isNotEmpty)
-                      const Icon(Icons.note, color: Colors.blue),
-                    IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.redAccent,),
-                      onPressed: () => _confirmDeleteTask(task),
+      return ListView(
+        children: [
+          ReorderableListView(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            onReorder: (oldIndex, newIndex) {
+              if (oldIndex >= uncompleted.length || newIndex > uncompleted.length) return;
+              _reorderTasks(uncompleted, oldIndex, newIndex);
+            },
+            children: [
+              for (var task in uncompleted)
+                Card(
+                  key: ValueKey(task.id),
+                  child: ListTile(
+                    title: Text(task.title),
+                    subtitle: Text("Due: ${task.dueDate != null ? DateFormat('yyyy-MM-dd').format(task.dueDate!) : 'None'}"),
+                    leading: Checkbox(
+                      value: task.isCompleted,
+                      onChanged: (_) => _toggleTaskCompletion(task),
                     ),
-                  ],
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (task.note != null && task.note!.trim().isNotEmpty)
+                          const Icon(Icons.note, color: Colors.blue),
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.redAccent),
+                          onPressed: () => _confirmDeleteTask(task),
+                        ),
+                      ],
+                    ),
+                    onTap: () => _editTask(task),
+                  ),
                 ),
-                  onTap: () => _editTask(task),
-                ),
+            ],
+          ),
+          const Divider(),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text("Completed Tasks", style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          for (var task in completed)
+            ListTile(
+              title: Text(
+                task.title,
+                style: const TextStyle(decoration: TextDecoration.lineThrough),
               ),
-            const Divider(),
-            const Text("Completed Tasks", style: TextStyle(fontWeight: FontWeight.bold)),
-            for (var task in completed)
-              ListTile(
-                title: Text(task.title, style: const TextStyle(decoration: TextDecoration.lineThrough)),
-              ),
-          ],
-        );
-      },
-    );
-  }
+            ),
+        ],
+      );
+    },
+  );
+}
 
   Widget _buildCategoryDrawer() {
     return Drawer(

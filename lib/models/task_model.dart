@@ -8,6 +8,7 @@ class Task {
   String category;
   String? note;
   DateTime? dueDate;
+  int position;
 
   Task({
     required this.id,
@@ -16,6 +17,7 @@ class Task {
     required this.category,
     this.note,
     this.dueDate,
+    this.position = 0,
   });
 
   factory Task.fromMap(Map<String, dynamic> map, String documentId) {
@@ -26,6 +28,7 @@ class Task {
       category: map['category'] ?? 'Personal',
       note: map['note'],
       dueDate: map['dueDate'] != null ? (map['dueDate'] as Timestamp).toDate() : null,
+      position: map['position'] ?? 0,
     );
   }
 
@@ -36,6 +39,7 @@ class Task {
       'category': category,
       'note': note,
       'dueDate': dueDate,
+      'position': position,
     };
   }
 }

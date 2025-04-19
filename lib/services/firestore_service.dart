@@ -8,16 +8,17 @@ class FirestoreService {
   String get _uid => FirebaseAuth.instance.currentUser!.uid;
 
   // 📄 Tasks
-  Stream<List<Task>> getTasks(String category) {
-    return _db
-        .collection('users')
-        .doc(_uid)
-        .collection('tasks')
-        .where('category', isEqualTo: category)
-        .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => Task.fromMap(doc.data(), doc.id)).toList());
-  }
+Stream<List<Task>> getTasks(String category) {
+  return _db
+      .collection('users')
+      .doc(_uid)
+      .collection('tasks')
+      .where('category', isEqualTo: category)
+      .orderBy('position') // 🔥 this enables ordering
+      .snapshots()
+      .map((snapshot) =>
+          snapshot.docs.map((doc) => Task.fromMap(doc.data(), doc.id)).toList());
+}
 
   Future<void> ensureDefaultCategory() async {
   final docRef = _db
