@@ -10,11 +10,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  intl: ^0.18.0
-  firebase_core: ^2.24.2
-  cloud_firestore: ^4.14.0
-  firebase_auth: ^4.17.4
-  firebase_analytics: ^10.8.5
+  intl: ^0.20.2
+  firebase_core: ^3.13.0
+  cloud_firestore: ^5.6.6
+  firebase_auth: ^5.5.2
+  firebase_analytics: ^11.4.5
+  firebase_messaging: ^15.2.5
   cupertino_icons: ^1.0.8
   uuid: ^4.5.1
 

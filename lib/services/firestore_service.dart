@@ -34,13 +34,16 @@ Stream<List<Task>> getTasks(String category) {
 }
 
 
-  Future<void> addTask(Task task) {
-    return _db
-        .collection('users')
-        .doc(_uid)
-        .collection('tasks')
-        .add(task.toMap());
-  }
+Future<void> addTask(Task task) {
+  final taskData = task.toMap();
+  taskData['reminderSent'] = false; // Add this flag to track notification
+
+  return _db
+      .collection('users')
+      .doc(_uid)
+      .collection('tasks')
+      .add(taskData);
+}
 
   Future<void> updateTask(Task task) {
     return _db

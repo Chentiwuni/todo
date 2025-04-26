@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-
 class Task {
   String id;
   String title;
@@ -9,6 +8,7 @@ class Task {
   String? note;
   DateTime? dueDate;
   int position;
+  bool reminderSent;
 
   Task({
     required this.id,
@@ -18,6 +18,7 @@ class Task {
     this.note,
     this.dueDate,
     this.position = 0,
+    this.reminderSent = false,
   });
 
   factory Task.fromMap(Map<String, dynamic> map, String documentId) {
@@ -29,6 +30,7 @@ class Task {
       note: map['note'],
       dueDate: map['dueDate'] != null ? (map['dueDate'] as Timestamp).toDate() : null,
       position: map['position'] ?? 0,
+      reminderSent: map['reminderSent'] ?? false,
     );
   }
 
@@ -40,6 +42,7 @@ class Task {
       'note': note,
       'dueDate': dueDate,
       'position': position,
+      'reminderSent': reminderSent,
     };
   }
 }

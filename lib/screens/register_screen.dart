@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../services/auth_service.dart';
 import 'home_screen.dart';
 
@@ -24,10 +26,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     try {
-      await _authService.register(
+      final user = await _authService.register(
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
+      if (user != null) {
+        final token = await FirebaseMessaging.instance.getToken();
+        if (token != null) {
+          await FirebaseFirestore.instance.collection('users').doc(user.uid).update({'fcmToken': token});
+        }
+      }
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
     } on FirebaseAuthException catch (e) {
       setState(() => _error = e.message);
